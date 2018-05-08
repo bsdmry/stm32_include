@@ -1,0 +1,53 @@
+/*
+ * delay.h
+ *
+ *  Created on: 28 авг. 2017 г.
+ *      Author: igor
+ */
+
+#ifndef DELAY_H_
+#define DELAY_H_
+
+#include "cmsis_device.h"
+#include "cortexm/ExceptionHandlers.h"
+#define TIMER_FREQUENCY_HZ (1000u)
+typedef uint32_t timer_ticks_t;
+
+#if defined(USE_HAL_DRIVER)
+void HAL_IncTick(void);
+#endif
+
+volatile timer_ticks_t timer_delayCount;
+
+void timer_start (void)
+{
+  // Use SysTick as reference for the delay loops.
+  SysTick_Config (SystemCoreClock / TIMER_FREQUENCY_HZ);
+}
+
+void timer_sleep (timer_ticks_t ticks)
+{
+  timer_delayCount = ticks;
+
+  // Busy wait until the SysTick decrements the counter to zero.
+  while (timer_delayCount != 0u)
+    ;
+}
+void timer_tick (void)
+{
+  // Decrement to zero the counter used by the delay routine.
+  if (timer_delayCount != 0u)
+    {
+      --timer_delayCount;
+    }
+}
+
+void SysTick_Handler (void)
+{
+#if defined(USE_HAL_DRIVER)
+  HAL_IncTick();
+#endif
+  timer_tick ();
+}
+
+#endif /* DELAY_H_ */
