@@ -128,7 +128,7 @@ void read_bme280_calibration(void){
 	H3 = cal2[2];
 	H4 = (int16_t)((((int8_t)cal2[3]) << 4) | (cal2[4] & 0x0f));
 	H5 = (int16_t)((((int8_t)cal2[5]) << 4) | (cal2[4] >> 4));
-	H6 = int8_t()cal2[6];
+	H6 = (int8_t)cal2[6];
 }
 
 void bme280_read_all(int32_t *UT, int32_t *UP, int32_t *UH) {
