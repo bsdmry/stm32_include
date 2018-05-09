@@ -210,7 +210,6 @@ void I2C_read(uint8_t dev_addr, uint8_t Reg, uint8_t *Data, uint8_t DCnt)
 
 void I2C_read8(uint8_t dev_addr, uint8_t Reg, uint8_t *result){
 	uint8_t tmp[1];
-	uint16_t rr;
 	I2C_read(dev_addr, Reg, tmp, 1);
 	*result = tmp;
 }
