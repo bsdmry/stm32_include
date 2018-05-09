@@ -7,6 +7,7 @@
 
 #ifndef BME280_H_
 #define BME280_H_
+#include "delay.h"
 #include "i2c.h"
 
 #define BME280_I2C_PORT I2C2 // I2C port where the BME280 connected
@@ -147,7 +148,88 @@ void bme280_read_all(int32_t *UT, int32_t *UP, int32_t *UH) {
 	*UH = (int32_t)((buf[6] <<  8) |  buf[7]);
 }
 
-float BME280_CalcTf(int32_t UT) {
+void bme280_reset(void) {
+	I2C_write8(BME280_ADDR, BME280_REG_RESET, BME280_SOFT_RESET_KEY);
+}
+
+// Set inactive duration in normal mode (Tstandby)
+// input:
+//   tsb - new inactive duration (one of BME280_STBY_x values)
+void bme280_setStandby(uint8_t tsb) {
+	uint8_t reg = 0;
+	// Read the 'config' (0xF5) register and clear 'filter' bits
+	I2C_read8(BME280_ADDR, BME280_REG_CONFIG, reg);
+	reg = reg & ~BME280_STBY_MSK;
+	// Configure new standby value
+	reg |= tsb & BME280_STBY_MSK;
+	// Write value back to the register
+	I2C_write8(BME280_ADDR, BME280_REG_CONFIG, reg);
+}
+
+// Set oversampling of temperature data
+// input:
+//   osrs - new oversampling value (one of BME280_OSRS_T_Xx values)
+void bme280_setOSRST(uint8_t osrs) {
+	uint8_t reg = 0;
+	// Read the 'ctrl_meas' (0xF4) register and clear 'osrs_t' bits
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	reg = reg & ~BME280_OSRS_T_MSK;
+	// Configure new oversampling value
+	reg |= osrs & BME280_OSRS_T_MSK;
+	// Write value back to the register
+	I2C_write8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+}
+
+// Set oversampling of pressure data
+// input:
+//   osrs - new oversampling value (one of BME280_OSRS_P_Xx values)
+void bme280_setOSRSP(uint8_t osrs) {
+	uint8_t reg = 0;
+	// Read the 'ctrl_meas' (0xF4) register and clear 'osrs_p' bits
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	reg = reg & ~BME280_OSRS_P_MSK;
+	// Configure new oversampling value
+	reg |= osrs & BME280_OSRS_P_MSK;
+	// Write value back to the register
+	I2C_write8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+}
+
+// Set oversampling of humidity data
+// input:
+//   osrs - new oversampling value (one of BME280_OSRS_H_Xx values)
+void bme280_setOSRSH(uint8_t osrs) {
+	uint8_t reg = 0;
+	// Read the 'ctrl_hum' (0xF2) register and clear 'osrs_h' bits
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_HUM, reg);
+	reg = reg & ~BME280_OSRS_H_MSK;
+	// Configure new oversampling value
+	reg |= osrs & BME280_OSRS_H_MSK;
+	// Write value back to the register
+	I2C_write8(BME280_ADDR, BME280_REG_CTRL_HUM, reg);
+
+	// Changes to 'ctrl_hum' register only become effective after a write to 'ctrl_meas' register
+	// Thus read a value of the 'ctrl_meas' register and write it back after write to the 'ctrl_hum'
+	// Read the 'ctrl_meas' (0xF4) register
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	// Write back value of 'ctrl_meas' register to activate changes in 'ctrl_hum' register
+	I2C_write8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+}
+
+// Set sensor mode of the BME280 chip
+// input:
+//   mode - new mode (BME280_MODE_SLEEP, BME280_MODE_FORCED or BME280_MODE_NORMAL)
+void bme280_setMode(uint8_t mode) {
+	uint8_t reg = 0;
+	// Read the 'ctrl_meas' (0xF4) register and clear 'mode' bits
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	reg = reg & ~BME280_MODE_MSK;
+	// Configure new mode
+	reg |= mode & BME280_MODE_MSK;
+	// Write value back to the register
+	I2C_write8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+}
+
+float bme280_calcTf(int32_t UT) {
 	float v_x1,v_x2;
 
 	v_x1 = (((float)UT) / 16384.0 - ((float)T1) / 1024.0) * ((float)T2);
@@ -164,7 +246,7 @@ float BME280_CalcTf(int32_t UT) {
 // return: pressure in Pa (value of '99158.968' represents 99158.968Pa)
 // note: BME280_CalcT of BME280_CalcTf must be called before calling this function
 // note: code from the BME280 datasheet (rev 1.1)
-float BME280_CalcPf(uint32_t UP) {
+float bm280_calcPf(uint32_t UP) {
 	float v_x1, v_x2, p;
 
 	v_x1 = ((float)t_fine / 2.0) - 64000.0;
@@ -189,7 +271,7 @@ float BME280_CalcPf(uint32_t UP) {
 // return: humidity in %RH (value of '46.333' represents 46.333%RH)
 // note: BME280_CalcT or BME280_CalcTf must be called before calling this function
 // note: code from the BME280 datasheet (rev 1.1)
-float BME280_CalcHf(uint32_t UH) {
+float bme280_calcHf(uint32_t UH) {
 	float h;
 
 	h = (((float)t_fine) - 76800.0);
@@ -204,6 +286,18 @@ float BME280_CalcHf(uint32_t UH) {
 	}
 
 	return h;
+}
+
+void bme280_init(void){
+	bme280_reset();
+	timer_sleep(2000);
+	bme280_setStandby(BME280_STBY_1s);
+	bme280_setOSRST(BME280_OSRS_T_x4);
+	bme280_setOSRSP(BME280_OSRS_P_x2);
+	bme280_setOSRSH(BME280_OSRS_H_x1);
+
+	bme280_setMode(BME280_MODE_NORMAL);
+	read_bme280_calibration();
 }
 
 #endif /* BME280_H_ */
