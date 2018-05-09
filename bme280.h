@@ -246,7 +246,7 @@ float bme280_calcTf(int32_t UT) {
 // return: pressure in Pa (value of '99158.968' represents 99158.968Pa)
 // note: BME280_CalcT of BME280_CalcTf must be called before calling this function
 // note: code from the BME280 datasheet (rev 1.1)
-float bm280_calcPf(uint32_t UP) {
+float bme280_calcPf(uint32_t UP) {
 	float v_x1, v_x2, p;
 
 	v_x1 = ((float)t_fine / 2.0) - 64000.0;
