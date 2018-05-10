@@ -139,6 +139,7 @@ void I2C_read(uint8_t dev_addr, uint8_t Reg, uint8_t *Data, uint8_t DCnt)
 	I2C_ClearFlag(I2C1, I2C_FLAG_STOPF);
 }
 #endif
+
 #ifdef STM32F10X
 void I2C_write(uint8_t dev_addr, uint8_t address, uint8_t *data, uint8_t data_cnt)
 {
@@ -209,9 +210,7 @@ void I2C_read(uint8_t dev_addr, uint8_t Reg, uint8_t *Data, uint8_t DCnt)
 
 
 void I2C_read8(uint8_t dev_addr, uint8_t Reg, uint8_t *result){
-	uint8_t tmp[1];
-	I2C_read(dev_addr, Reg, tmp, 1);
-	*result = tmp;
+	I2C_read(dev_addr, Reg, result, 1);
 }
 
 void I2C_read16(uint8_t dev_addr, uint8_t Reg, uint16_t *result){
@@ -219,7 +218,7 @@ void I2C_read16(uint8_t dev_addr, uint8_t Reg, uint16_t *result){
 	uint16_t rr;
 	I2C_read(dev_addr, Reg, tmp, 2);
 	rr = (((uint16_t)tmp[0] << 8) | tmp[1]);
-	*result = rr;
+	result = rr;
 }
 
 #endif /* I2C_H_ */

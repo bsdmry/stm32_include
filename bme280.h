@@ -113,19 +113,19 @@ void read_bme280_calibration(void){
 	I2C_read(BME280_ADDR, BME280_REG_CALIB26, cal2, 7);
 	I2C_read(BME280_ADDR, BME280_REG_CALIB25, &H1, 1);
 
-	T1 = (((uint16_t)cal1[0] << 8) | cal1[1]);
-	T2 = (int16_t)(((uint16_t)cal1[2] << 8) | cal1[3]);
-	T2 = (int16_t)(((uint16_t)cal1[4] << 8) | cal1[5]);
+	T1 = (((uint16_t)cal1[1] << 8) | cal1[0]);
+	T2 = (int16_t)(((uint16_t)cal1[3] << 8) | cal1[2]);
+	T3 = (int16_t)(((uint16_t)cal1[5] << 8) | cal1[4]);
 
-	P1 = (((uint16_t)cal1[6] << 8) | cal1[7]);
-	P2 = (int16_t)(((uint16_t)cal1[8] << 8) | cal1[9]);
-	P3 = (int16_t)(((uint16_t)cal1[10] << 8) | cal1[11]);
-	P4 = (int16_t)(((uint16_t)cal1[12] << 8) | cal1[13]);
-	P5 = (int16_t)(((uint16_t)cal1[14] << 8) | cal1[15]);
-	P6 = (int16_t)(((uint16_t)cal1[16] << 8) | cal1[17]);
-	P7 = (int16_t)(((uint16_t)cal1[18] << 8) | cal1[19]);
-	P8 = (int16_t)(((uint16_t)cal1[20] << 8) | cal1[21]);
-	P9 = (int16_t)(((uint16_t)cal1[22] << 8) | cal1[23]);
+	P1 = (((uint16_t)cal1[7] << 8) | cal1[6]);
+	P2 = (int16_t)(((uint16_t)cal1[9] << 8) | cal1[8]);
+	P3 = (int16_t)(((uint16_t)cal1[11] << 8) | cal1[10]);
+	P4 = (int16_t)(((uint16_t)cal1[13] << 8) | cal1[12]);
+	P5 = (int16_t)(((uint16_t)cal1[15] << 8) | cal1[14]);
+	P6 = (int16_t)(((uint16_t)cal1[17] << 8) | cal1[16]);
+	P7 = (int16_t)(((uint16_t)cal1[19] << 8) | cal1[18]);
+	P8 = (int16_t)(((uint16_t)cal1[21] << 8) | cal1[20]);
+	P9 = (int16_t)(((uint16_t)cal1[23] << 8) | cal1[22]);
 
 	H2 = (int16_t)((((int8_t)cal2[1]) << 8) | cal2[0]);
 	H3 = cal2[2];
@@ -152,13 +152,19 @@ void bme280_reset(void) {
 	I2C_write8(BME280_ADDR, BME280_REG_RESET, BME280_SOFT_RESET_KEY);
 }
 
+uint8_t bm280_getVersion(void) {
+	uint8_t version = 0;
+	I2C_read8(BME280_ADDR, BME280_REG_ID, &version);
+	return version;
+}
+
 // Set inactive duration in normal mode (Tstandby)
 // input:
 //   tsb - new inactive duration (one of BME280_STBY_x values)
 void bme280_setStandby(uint8_t tsb) {
 	uint8_t reg = 0;
 	// Read the 'config' (0xF5) register and clear 'filter' bits
-	I2C_read8(BME280_ADDR, BME280_REG_CONFIG, reg);
+	I2C_read8(BME280_ADDR, BME280_REG_CONFIG, &reg);
 	reg = reg & ~BME280_STBY_MSK;
 	// Configure new standby value
 	reg |= tsb & BME280_STBY_MSK;
@@ -172,7 +178,7 @@ void bme280_setStandby(uint8_t tsb) {
 void bme280_setOSRST(uint8_t osrs) {
 	uint8_t reg = 0;
 	// Read the 'ctrl_meas' (0xF4) register and clear 'osrs_t' bits
-	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, &reg);
 	reg = reg & ~BME280_OSRS_T_MSK;
 	// Configure new oversampling value
 	reg |= osrs & BME280_OSRS_T_MSK;
@@ -186,7 +192,7 @@ void bme280_setOSRST(uint8_t osrs) {
 void bme280_setOSRSP(uint8_t osrs) {
 	uint8_t reg = 0;
 	// Read the 'ctrl_meas' (0xF4) register and clear 'osrs_p' bits
-	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, &reg);
 	reg = reg & ~BME280_OSRS_P_MSK;
 	// Configure new oversampling value
 	reg |= osrs & BME280_OSRS_P_MSK;
@@ -200,7 +206,7 @@ void bme280_setOSRSP(uint8_t osrs) {
 void bme280_setOSRSH(uint8_t osrs) {
 	uint8_t reg = 0;
 	// Read the 'ctrl_hum' (0xF2) register and clear 'osrs_h' bits
-	I2C_read8(BME280_ADDR, BME280_REG_CTRL_HUM, reg);
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_HUM, &reg);
 	reg = reg & ~BME280_OSRS_H_MSK;
 	// Configure new oversampling value
 	reg |= osrs & BME280_OSRS_H_MSK;
@@ -210,7 +216,7 @@ void bme280_setOSRSH(uint8_t osrs) {
 	// Changes to 'ctrl_hum' register only become effective after a write to 'ctrl_meas' register
 	// Thus read a value of the 'ctrl_meas' register and write it back after write to the 'ctrl_hum'
 	// Read the 'ctrl_meas' (0xF4) register
-	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, &reg);
 	// Write back value of 'ctrl_meas' register to activate changes in 'ctrl_hum' register
 	I2C_write8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
 }
@@ -221,12 +227,24 @@ void bme280_setOSRSH(uint8_t osrs) {
 void bme280_setMode(uint8_t mode) {
 	uint8_t reg = 0;
 	// Read the 'ctrl_meas' (0xF4) register and clear 'mode' bits
-	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+	I2C_read8(BME280_ADDR, BME280_REG_CTRL_MEAS, &reg);
 	reg = reg & ~BME280_MODE_MSK;
 	// Configure new mode
 	reg |= mode & BME280_MODE_MSK;
 	// Write value back to the register
 	I2C_write8(BME280_ADDR, BME280_REG_CTRL_MEAS, reg);
+}
+
+// Calculate temperature from raw value, resolution is 0.01 degree
+// input:
+//   UT - raw temperature value
+// return: temperature in Celsius degrees (value of '5123' equals '51.23C')
+// note: code from the BME280 datasheet (rev 1.1)
+int32_t bme280_calcT(int32_t UT) {
+	t_fine  = ((((UT >> 3) - ((int32_t)T1 << 1))) * ((int32_t)T2)) >> 11;
+	t_fine += (((((UT >> 4) - ((int32_t)T1)) * ((UT >> 4) - ((int32_t)T1))) >> 12) * ((int32_t)T3)) >> 14;
+
+	return ((t_fine * 5) + 128) >> 8;
 }
 
 float bme280_calcTf(int32_t UT) {
@@ -262,7 +280,7 @@ float bme280_calcPf(uint32_t UP) {
 	v_x2 = p * ((float)P8) / 32768.0;
 	p += (v_x1 + v_x2 + ((float)P7)) / 16.0;
 
-	return p;
+	return (p * 0.00750061683);
 }
 
 // Calculate humidity from raw value using floats, resolution is 0.001 %RH
