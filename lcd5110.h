@@ -7,6 +7,7 @@
 
 #ifndef LCD5110_H_
 #define LCD5110_H_
+#include <stdio.h>
 #ifdef STM32F00X
 #include "stm32f0xx.h"
 #include "stm32f0xx_rcc.h"
@@ -34,6 +35,45 @@
 #define LCD_SIZE LCD_WIDTH * LCD_HEIGHT / 8
 #define RST_PIN GPIO_Pin_0
 #define DC_PIN GPIO_Pin_1
+
+typedef struct {
+        uint8_t** values;
+        uint8_t size;
+        uint8_t line_width;
+        uint8_t x_pos;
+        uint8_t y_pos;
+        uint8_t wr_index;
+} Bargraph;
+
+Bargraph* bargraph_cfg(uint8_t bg_size, uint8_t bg_x, uint8_t bg_y, uint8_t width){
+        Bargraph* bg = malloc(sizeof(Bargraph));
+        bg->size = bg_size;
+        bg->x_pos = bg_x;
+        bg->y_pos = bg_y;
+        bg->wr_index = 0;
+        if ((bg_size*width) <=  LCD_WIDTH){
+                bg->line_width = width;
+        }else{
+                bg->line_width = 1;
+        }
+        bg->values = malloc(sizeof(uint8_t*)*bg_size);
+        return bg;
+}
+
+
+void bargraph_add(Bargraph* bg, uint8_t data){
+		if bg->wr_index = (bg->size -1){
+			for (uint8_t i = 1; i < (bg->size -1); i++) {
+				bg->values[i - 1] = bg->values[i];
+			}
+			bg->values[(bg->size -1)] = data;
+		}else{
+			bg->values[bg->wr_index] = data;
+			bg->wr_index++;
+		}
+}
+
+
 
 void init_lcd_pins(void){
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
@@ -71,7 +111,7 @@ void lcd5110_goXY(uint8_t x, uint8_t y){
 	lcd5110_write(0x40 | y, LCD_COMMAND); //Row.
   }
 
-void lcd5110_print(char *str, uint8_t size, uint8_t x, uint8_t y, uint8_t font_x2){
+void lcd5110_print(unsigned char *str, uint8_t size, uint8_t x, uint8_t y, uint8_t font_x2){
 	if(font_x2){
 		lcd5110_goXY(x, y);
 		for(int i = 0; i < size; i++){
@@ -92,6 +132,13 @@ void lcd5110_print(char *str, uint8_t size, uint8_t x, uint8_t y, uint8_t font_x
 		}
 	}
   }
+
+void bargraph_show(Bargraph* bg){
+	lcd5110_goXY(bg->x_pos, bg->y_pos);
+	for (uint8_t i = 0; i < bg->size; i++) {
+		lcd5110_write(bg->values[i], LCD_DATA);
+	}
+}
 
 void lcd5110_init(void){
 	 GPIO_ResetBits(GPIOB, RST_PIN);
