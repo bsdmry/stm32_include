@@ -37,7 +37,8 @@
 #define DC_PIN GPIO_Pin_1
 
 typedef struct {
-        uint8_t** values;
+        int16_t* values;
+        uint8_t* bars;
         uint8_t size;
         uint8_t line_width;
         uint8_t x_pos;
@@ -56,24 +57,100 @@ Bargraph* bargraph_cfg(uint8_t bg_size, uint8_t bg_x, uint8_t bg_y, uint8_t widt
         }else{
                 bg->line_width = 1;
         }
-        bg->values = malloc(sizeof(uint8_t*)*bg_size);
+        bg->values = malloc(sizeof(int16_t)*bg_size);
+        bg->bars = malloc(sizeof(uint8_t)*bg_size);
+        memset(bg->values, 0, (sizeof(int16_t)*bg_size));
+        memset(bg->bars, 0, (sizeof(uint8_t)*bg_size));
         return bg;
 }
 
-
-void bargraph_add(Bargraph* bg, uint8_t data){
-		if bg->wr_index = (bg->size -1){
-			for (uint8_t i = 1; i < (bg->size -1); i++) {
-				bg->values[i - 1] = bg->values[i];
-			}
-			bg->values[(bg->size -1)] = data;
-		}else{
-			bg->values[bg->wr_index] = data;
-			bg->wr_index++;
-		}
+void set_level(int16_t *lvl, int16_t val, uint8_t *result){
+    if (val < lvl[0]){
+        *result = 0;
+    }
+    if (val >= lvl[0]){
+        *result = 0x40;
+    }
+    if (val >= lvl[1]){
+        *result = 0x60;
+    }
+    if (val >= lvl[2]){
+        *result = 0x70;
+    }
+    if (val >= lvl[3]){
+        *result = 0x78;
+    }
+    if (val >= lvl[4]){
+        *result = 0x7c;
+    }
+    if (val >= lvl[5]){
+        *result = 0x7e;
+    }
+    if (val >= lvl[6]){
+        *result = 0x7f;
+    }
 }
 
+void find_levels(int16_t *data, uint8_t datacnt, int16_t *lvl){
+    int16_t min, max = 0;
+    int16_t diffs[6][7] = {
+    {0,0,0,0,1,1,1},//0
+    {0,0,0,1,1,1,1},//1
+    {0,1,1,1,2,2,2},//2
+    {0,1,1,2,2,3,3},//3
+    {0,1,2,3,3,4,4},//4
+    {0,1,2,3,3,4,5}//5
+    };
 
+    min = data[0];
+    max = data[0];
+    for (uint8_t i = 0; i < datacnt; i++){
+        if (data[i] > max){
+            max = data[i];
+        }
+        if (data[i] < min){
+            min = data[i];
+        }
+    }
+    int16_t delta = max - min;
+    if (delta >= 6){
+        int16_t step = delta /6;
+        lvl[0] = min;
+        lvl[1] = min + step;
+        lvl[2] = min + step*2;
+        lvl[3] = min + step*3;
+        lvl[4] = min + step*4;
+        lvl[5] = min + step*5;
+        lvl[6] = min + step*6;
+    } else {
+        for (uint8_t i = 0; i <=6; i++){
+            lvl[i] = min + diffs[delta][i];
+        }
+    }
+}
+
+void bargraph_add(Bargraph* bg, int16_t data){
+                int16_t levels[7];
+                if (bg->wr_index == (bg->size)){ //The bargraph is full, lets shift a data in the array
+                        for (uint8_t i = 0; i < (bg->size -1); i++) {
+                                bg->values[i] = bg->values[i+1];
+                        }
+                        bg->values[(bg->size -1)] = data; //overwrite last item
+
+                        find_levels(bg->values, (bg->size - 1), levels); //update levels based on new values
+                        for (uint8_t i = 0; i < bg->size; i++) {
+                            set_level(levels, bg->values[i], &bg->bars[i]); //set bars height
+                        }
+
+                }else{
+                        bg->values[bg->wr_index] = data;
+                        find_levels(bg->values, bg->wr_index, levels);
+                        for (uint8_t i = 0; i <= bg->wr_index; i++) {
+                           set_level(levels, bg->values[i], &bg->bars[i]);
+                        }
+                        bg->wr_index++;
+                }
+}
 
 void init_lcd_pins(void){
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
@@ -135,9 +212,11 @@ void lcd5110_print(unsigned char *str, uint8_t size, uint8_t x, uint8_t y, uint8
 
 void bargraph_show(Bargraph* bg){
 	lcd5110_goXY(bg->x_pos, bg->y_pos);
-	for (uint8_t i = 0; i < bg->size; i++) {
-		lcd5110_write(bg->values[i], LCD_DATA);
-	}
+        for(uint8_t i = 0; i < bg->size; i++){
+    		for(uint8_t s = 0; s < bg->line_width; s++){
+    			lcd5110_write(bg->bars[i], LCD_DATA);
+    		}
+        }
 }
 
 void lcd5110_init(void){
